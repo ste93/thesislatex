@@ -1,0 +1,50 @@
+\select@language {american}
+\contentsline {chapter}{Introduzione}{i}
+\contentsline {chapter}{\numberline {1}Introduction}{1}
+\contentsline {section}{\numberline {1.1}Problem formalisation}{1}
+\contentsline {section}{\numberline {1.2}Background knowledge}{2}
+\contentsline {subsection}{\numberline {1.2.1}B+tree}{2}
+\contentsline {subsection}{\numberline {1.2.2}AES algorithm}{3}
+\contentsline {subsection}{\numberline {1.2.3}Key expansion algorithm}{3}
+\contentsline {subsubsection}{Encryption}{5}
+\contentsline {paragraph}{Substitute Bytes: }{6}
+\contentsline {paragraph}{Shift Rows: }{7}
+\contentsline {paragraph}{Mix Columns}{7}
+\contentsline {paragraph}{Add round key}{7}
+\contentsline {subsubsection}{Decryption}{8}
+\contentsline {paragraph}{Inverse Substitute Bytes: }{8}
+\contentsline {paragraph}{Shift rows}{8}
+\contentsline {paragraph}{Mix columns}{9}
+\contentsline {paragraph}{Add round key}{9}
+\contentsline {chapter}{\numberline {2}State of the art}{11}
+\contentsline {section}{\numberline {2.1}Data encryption at rest}{11}
+\contentsline {section}{\numberline {2.2}Data encryption in transit}{12}
+\contentsline {section}{\numberline {2.3}Data encryption in use}{14}
+\contentsline {chapter}{\numberline {3}Implementation}{15}
+\contentsline {section}{\numberline {3.1}Server}{15}
+\contentsline {section}{\numberline {3.2}Client}{16}
+\contentsline {subsubsection}{B+tree implementation}{16}
+\contentsline {paragraph}{Insertion}{16}
+\contentsline {paragraph}{Search}{17}
+\contentsline {paragraph}{Retrieve And Storing The Tree}{17}
+\contentsline {subparagraph}{Fake Searches}{18}
+\contentsline {subparagraph}{Cache Searches}{18}
+\contentsline {subparagraph}{Shuffling The Sectors}{18}
+\contentsline {subsubsection}{Cryptography}{19}
+\contentsline {subsubsection}{User Interface}{19}
+\contentsline {paragraph}{Set the database}{19}
+\contentsline {paragraph}{Queries and insertion}{19}
+\contentsline {subparagraph}{q}{20}
+\contentsline {subparagraph}{c}{20}
+\contentsline {subparagraph}{r int1 int2}{20}
+\contentsline {subparagraph}{p int}{20}
+\contentsline {subparagraph}{i int1 ... intN}{20}
+\contentsline {subparagraph}{a filename indexKey}{20}
+\contentsline {chapter}{\numberline {4}Comparison and test}{21}
+\contentsline {section}{\numberline {4.1}Testing}{21}
+\contentsline {subsection}{\numberline {4.1.1}16 records}{21}
+\contentsline {subsection}{\numberline {4.1.2}128 records}{22}
+\contentsline {subsection}{\numberline {4.1.3}1024 records}{22}
+\contentsline {subsection}{\numberline {4.1.4}16384 records}{23}
+\contentsline {section}{\numberline {4.2}Conclusions}{23}
+\contentsline {chapter}{Bibliography}{25}

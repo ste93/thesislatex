@@ -1,0 +1,160 @@
+Our implementation is based on C++ programming language. Most of the computation is done by the client, since the server cannot know which data is manipulating. This method allows the client to maintain the control over the cleartext data. In particular, the server cannot read it unless it recovers the key from the client. This maintains very strong the security of the database, since no one that has access to the server can obtain the true information from the data.
+
+\section{Server}
+The server side is very small in this program because of the confidentiality of the data. Due to this, the only task of the server is to interact between the client and the hard disk.
+Is implemented in C++ but most of its parts are written in C. \\
+When the server is launched it binds to a port, that is the argument passed by the client. in case of error it exits. After that it starts listening over the socket for some data. This part has 2 functions, that are \emph{readn} and \emph{writen}, which respectively read and write n bytes from and to the socket. They are made to process exactly n bytes, so the function doesn't end until they are all read/written.\\
+During the listening, the server waits for a connection. When the server receives the attempt of a connection from a client, it launches a thread and accepts the connection. After that, it waits for a command. The accepted commands are the followings:
+\begin{itemize}
+\item "\textbf{wr}" which means that the client wants to write some data. The server waits for the sector where the client wants to write the data and the length of the data. In this case the server waits for the number of the sector and converts it from network integer representation to the host one. 
+The same thing is done with the size of the data to write (the server always receives 512 Bytes). After that, it allocates an array of char where to store the data sent by the client. Done this, it receives the data from the client, that is the most important thing. 
+When all the data is retrieved, the thread handling the client connection gets the mutual exclusion, and writes it into the disk.
+This last part is done by seeking the hard drive sector with lseek and writing into it with the write function from the C library.
+If there are no errors, the thread release the mutual exclusion, re-sends the number of the sector to the client for acknowledgment and frees the array previously allocated.
+\item "\textbf{re}" means that the client wants to read a sector. The server waits for the sector's number, then, as it occurs for the previous command, command it converts the integer from network to host byte representation. Afterwards, the thread takes the mutual exclusion and reads the specified sector, by seeking it with lseek and reading it with the read function from C. In this case we don't need to receive the length of the data because the server automatically reads all the sector.
+This string is put into a buffer previously allocated and then it is sent  to the client. Finally, the thread releases the mutual exclusion and frees the buffer.
+\item "\textbf{xx}" which means that the client wants to close the connection. In such case, the server replies with "xx" message and then closes the socket.
+
+\end{itemize}
+The server is supposed to run in another computer instead of the client's one, and its workload is very small. Therefore, the client's computer doesn't have to be a powerful one. Due to this, the server can also be on the same computer of the client, even though the client has usually a not so powerful computer.
+
+\section{Client}
+Since most of the computation is done by the client, this part is the most important of the project. This section is divided into ... parts: the first one is related to the implementation of the b+tree and how to serialize it, the second part is related on how to encrypt all the sections of the tree and the third one is related on how and when interact with the server for retrieve the data.
+Obviously if the server has no data stored, the client begins locally a new tree and after it has create all the tree with local data, it can do search operations on them and after that it sends all the data to the server for storing it.
+For the cryptography is used the openssl library, that implements an AES 256 bit. For more information see \cite{openssl}. 
+\subsection{B+tree implementation}
+The code is based on a b+tree written in C (for more specification see \cite{bplustree}) with some changes: our implementation has no link between the leafs, is encrypted and stores the nodes in an external hard drive.
+The structures used for the realization of the tree are:
+\begin{itemize}
+    \item \emph{node:} A node is the internal part of the tree and is composed by:
+    \begin{itemize}
+        \item a key that is a 32 bit integer;
+        \item an array of keys, that associated with the pointers array and the sectors array 
+        \item an array of sectors;
+        \item an array of pointers;
+        \item a pointer to the parent node;
+        \item an integer that counts the number of the keys;
+        \item an integer that mantain the sector in which it was stored.
+    \end{itemize}
+    it is important to distinguish between leafs and internal nodes because in the leafs the pointers corresponds to the pointers of the record with that key, while in the internal nodes the first pointer points to a node that contains the keys lower than the first key, the second points to a node with keys higher or equal to the first key and lower than the second and so on until the last node that points to a node with keys higher or equal to the last-1 key.
+    \item \emph{record:} A record is the part of the tree where all the data is stored. It is collocated on the leafs of the tree and is composed by:
+    \begin{itemize}
+        \item a 32 bit integer that is the key;
+        \item a pointer to an array of fields, in which are stored all the fields of the database. It isn't allocated before for allowing the client to choose the number of fields.
+        \item a pointer to the parent node
+        \item an integer that is the number of the sector.
+    \end{itemize}
+    \item \emph{info:} The info is stored in the first sector of the hard drive and is composed by:
+    \begin{itemize}
+        \item an integer that is the sector of the root;
+        \item an integer that is the last sector used;
+        \item an integer that is the number of fields.
+    \end{itemize}
+\end{itemize}
+\subsubsection{Ausiliar functions}
+The client has some ausiliar functions that are used during the program. 
+3 functions are made for the creation of records and nodes: make\_node() and make\_record() are made for allocating a new node and a new record.
+Each of this function assign at the node/record a sector that is equal to the last sector used + 1 and updates the info$->$last\_sector\_used global variable, the map and the set of sector used. this is necessary for later storing the tree. The second also take as input the key and an array with the fields and initialize the record with them. Another useful function is make\_leaf(), that takes a node as input and sets the boolean variable is\_leaf as TRUE.
+
+\subsubsection{Search}
+The search has 2 main functions:
+\begin{itemize}
+    \item \emph{Single record queries:} This search is done with the function find that takes as input a pointer to the root and an integer that contains the key. After that is called the function find\_leaf(), that explores the tree and searches for a leaf that can contain the specified key. Since is a b+tree the search has a logarithmic complexity in the size of the database, but is slowed by fake searches, because they retrieve more nodes.
+    In case such leaf exists, the find() function scroll the keys of it and search if the key is found. Since all the keys are ordered it is very easy to look if a key exists. In the affirmative case the function returns the record, otherwise it returns NULL.
+    \item \emph{Range queries:} This type of search, that is very important in the project, begins with the function find\_and\_print\_range(): The function itself is not very important because it declares a list of records and calls the core of the search: find\_range(). This function is build by doing a Breadth first search in the tree, this means the search is done level by level. The BFS implementation begins with declaring a queue, that contains the nodes to be explored. After that it begins a loop where each node is explored. At this point we can have 2 conditions:
+    \begin{itemize}
+        \item \emph{The node is internal:} in this case the algorithm looks the keys of the node. Then it is divided in 3 cases:
+        \begin{itemize}
+            \item \emph{The first pointer:} For the first pointer the only comparison needed is if the first key is less or equal than the lower extreme of the range. In this case the algorithm retrieves the node and puts it into the queue of nodes. Otherwise it doesn't do anything.
+            \item \emph{The internal pointers:} In this case for each pointer is checked if the previous key is lower or equal than the end of the range or if the key with the same index as the pointer is higher than the key with the same index of the pointer. In case one of the 2 conditions is valid the algorithm retrieves the node and puts it into the queue of nodes. Otherwise it doesn't do anything.
+            \item \emph{The last pointer:} For the last pointer is checked if the last - 1 key (that is denoted by num\_keys) is lower than the higher extreme of the range. If it is the algorithm retrieves the node and puts it into the queue of nodes. Otherwise it doesn't do anything.
+        \end{itemize}
+        \item \emph{The node is a leaf:} In this case the algorithm checks every key and if is in the range insert the record into the list. If the record is not in the cache it is retrieved by a fake search.
+    \end{itemize}
+
+\end{itemize}
+At every time of the step if a node or record isn't cached, it is retrieved with a fake search.
+
+\subsubsection{Insertion}
+The insertion of a record into a tree starts by calling the insert() function. It tooks as input 3 arguments: a pointer to the root,an integer that contains the key and an array with the fields of the record; and returns a pointer to the root of the tree. 
+It starts by checking if the root isn't NULL, if it isn't the algorithm calls the function find() and searches for the record. In case a record is found it returns the root.
+
+If it isn't found the function creates a new record with the data passed by the caller. at this point it checks if the root is NULL, in this case creates a new node, it is marked as leaf and the record is inserted in the first pointer, with the corresponding sector and key. After that the node just created is returned.
+
+In case a tree already exists but no record with the specified key is found, it calls the function find\_leaf() and checks if there's enough space in the leaf returned. In the affirmative case, the record is inserted in the right position in the leaf (all the keys must be in ascending order) and the root is returned. In this case the root remains the same. In negative case, the leaf must be splitted, so is called the function insert\_into\_leaf\_after\_splitting(). This function takes as input a pointer to the root of the tree, a pointer to the leaf previously found, an integer that contains the key that must be inserted and a pointer to the record previously created.
+
+This function calculate the point where the leaf must be splitted, then creates a new node and puts in it pointer and keys higher and equal to the middle key, leaving the space for the key that must be inserted free. After that it inserts the key and calls the function insert\_into\_parent(). This last call is necessary because the first key of the new node must be inserted in the parent node. It takes as input a pointer to the root of the tree, the pointers to the previous leaf and to the next leaf, and an integer that contains the key that must be inserted in the parent. This function begins by checking the parent of the first leaf. If the parent is NULL this means we have the root and we need to insert the 2 leafs into a new root. So the algorithm creates a new root and puts the two leafs as child of it, with the function insert\_into\_new\_root().
+In case the parent exists, then is retrieved the index of the left leaf (the old one) in parent's sectors. After that is checked if the parent has enough space for contain the new leaf, in this case with the function insert\_into\_node() the new leaf is inserted into the parent by putting the key after the old node's key and shifting all the following ones by 1.
+In case there isn't enough space, then is called the function insert\_into\_node\_after\_splitting(). This function works more or less as same as insert\_into\_leaf\_after\_splitting(), with the only difference that the last works on leafs, so keys indexes are equal to pointer and sector indexes, while in the nodes the keys indexes that must be checked are 2.
+After creating the new node is called again the function insert\_into\_node() until it doesn't have any node to split, after that the root pointer is returned.
+
+During all the insertion operations if the node is not in cache(that means the client hasn't retrieved it yet) then it is retrieved by doing a fake search as below.
+
+%\subsection{Tree Management}
+\subsubsection{Storing The Tree}
+Storing the tree and sending them to the server can happen in 2 methods: the first is when the client wants to send it and calls the command q, the second is when the client wants to close the connection with the server. This part is done by calling the function send\_tree(), that shuffle the sectors of cached nodes and records, serialize them into a string, encrypt them and sends it to the server.
+\paragraph{Shuffling The Sectors}
+Shuffling the sectors is useful so the server cannot establish a connection between the nodes and their position in the tree. For example, if we don't shuffle the sectors then the server can easily discover which is the root node and the nodes mostly retrieved by looking at the history of the requests.
+This part Is implemented by storing each sector retrieved from the server in a set, and then when we have to resend them to the server, at each node/record is assigned a sector taken randomly from the set, meanwhile the parent is updated with the right sector. This redistribution occurs staring from the root and, doing a BFS as above, assign at each node/record a sector. When a sector is assigned it is removed from the set. 
+During this part when all the sectors of the children of a node are reassigned, that node is serialized, encrypted and sent to the server, that stores it in teh new sector. When all the internal nodes are sent to the server, the algorithm continues to the leafs.
+For each leaf if a record is cached in the client, that record's sector is changed and then sent to the server. When there is no child of the leaf cached, then is sent the leaf. 
+After the serialization of the tree the program serialize the struct with basics information for retrieving the tree in the first sector, so when it retrieves again teh tree those information are easily retrievable.
+\paragraph{Serialization}
+\begin{enumerate}
+\item \emph{Serialize Nodes:} The serialization of nodes begins by converting each integer from host size to network size (for the endianess of the processor)and by setting each pointer to NULL. After that it allocates an array with a size that is composed by a fixed part (that is the length of the node + 10) and a variable part to make the length of the array divisible by 16 (this is needed for AES algorithm). After that all the node is copied into the string and the remaining bytes are taken randomly (this is considered as salting.). The string obtained by this process is passed to the AES algorithm as explained below. Then is created another string that contains in the first 4 bytes the size of the data encrypted in network size (this is used for the decryption), the node encrypted and in the end 16 bytes that contains the iv (this also is used for adding randomness). The last string in the end is sent to the server alongside the number of the sector. 
+\item \emph{Serialize Sectors:} The serialization of sectors begins by converting each integer from host size to network size (for the endianess of the processor)and by setting each pointer to NULL. After that it allocates an array with a size that is composed by a fixed part (that is the length of the record + the length of the array with the fields + 10) and a variable part to make the length of the array divisible by 16 (this is needed for AES algorithm). After that all the record is copied into the string , following all the fields of the record and the remaining bytes are taken randomly (this is considered as salting.). The string obtained by this process is passed to the AES algorithm as explained below. Then is created another string that contains in the first 4 bytes the size of the data encrypted in network size (this is used for the decryption), the node encrypted and in the end 16 bytes that contains the iv (this also is used for adding randomness). The last string in the end is sent to the server alongside the number of the sector. 
+\item \emph{Serialize Info:} The serialization of the information is the same as the serialization of nodes changing only the size of the first array, that is composed by the size of the struct info instead the size of the node.
+\end{enumerate}
+
+\subsubsection{Retrieve The Tree}
+For retrieving the tree (we suppose that we already have one stored in the server) we start by retrieving the information about the tree stored in the first sector of the hard drive (sector 0). Here are stored the necessary information retrieve the tree: the sector where the root is stored, the last sector used (useful for inserting a new node/record in the tree) and the number of fields in the records.\\ 
+\paragraph{Deserialization} When a sector is retrieved the first thing to do is to deserialize it. This happens by reversing the algorithm applied in the encryption. In particular the first thing done is to retrieve the right length of the data, by taking the first 4 bytes and converting them into host endianess. After that is retrieved the iv, that is stored in the last 16 bytes. The last step is to decrypt the last part, that is done with the openssl library. After that the record/node is copied into a new node and all the numbers and pointers are setted with the correct values (the numbers are restored in host endianess and the pointers are setted to the right node/sector when it exists). In the end parent's pointers are setted to the correct address. For the record is also allocated a new array of fields and all the values previously serialized are restored.
+\paragraph{Fake Searches}
+Fake searches are useful for confuse the server on which sector we are retrieving. They are used when we have to retrieve a node, both from the server and none. 
+The algorithm takes a node and the index of the child to retrieve, then it takes n-1/2 other random indexes (where n is the number of keys in the node) and searches for them. If a sector is already cached then it passes to the next sector, otherwise if a sector is not cached it retrieves it from the server and updates the map and the set of the sector used.
+With this last step next time we don't have to retrieve the sector from the server.
+\paragraph{Cache Searches}
+In our implementation we suppose to have a cache that stores all the nodes retrieved since that moment and not already sent again to the server. Here are maintained all the nodes retrieved from the tree, until the user decide to send them to the server. It is all stored into the ram and is indexed with a map: this is a pair node/pointer. 
+
+
+\subsection{Cryptography}
+The encryption is done node by node. Is used an AES 256 bit for encrypting, and randomness is guaranteed by adding 10 or more random bytes at the end of the string that contains the node/record. Also we take a random iv and put it alongside the data sent for the decryption.
+In client's program nothing is encrypted unless it has to be sent to the server, while in server's program all the data managed, unless the sector, is chipertext.
+Since the most important thing is the key, this implementation stores the key into a file key.aes, so with this file the database can be retrieved from any computer.
+At the beginning the algorithm generates a random key, that is used for the rest of the computation. If the client wants to use another key, it should replace the file key.aes with another that contains the key, or delete it for create a new key.
+The algorithm used is the AES 256 EVP cbc, that is an interface for the encryption adopted by Openssl. CBC stands for cipher block chaining, that means the block encrypted are related to the previous block in the encryption.
+The iv (initialization vector) is used with the first block and the key for adding randomness.
+
+\subsection{Interaction With The Server}
+At the beginning the client establish a connection with the server, that remains active until the user wants to close it or in case of errors. 
+The messages that can be sent by the client are obviously the same explained in the server. 
+Briefly:
+\begin{enumerate}
+    \item \emph{"re"} if the client wants to read a sector;
+    \item \emph{"wr"} if the client wants to write a sector;
+    \item \emph{"xx"} if the client wants to close the connection.
+\end{enumerate}
+
+\subsection{User Interface}
+The user interface is all via terminal. It is composed by 2 parts:
+\subsubsection{Set the database}
+The setting of the database is done step by step:
+At the beginning the user decides if want to create a new database or use an existing one: in the first case nothing is done because the database already exists and it is retrieved only when needed. In the second case the user has to do 2 steps: the first is to insert the number of fields it wants in each record, the second is another choice: to insert them manually or take the fields from a file. If it want to insert them manually it passes directly to the second part, otherwise it has to insert the name of the file and the index of the key.
+\subsubsection{Queries and insertion}
+This section is composed by 6 commands:
+\begin{itemize}
+\item\textbf{q}
+With this command the user stores all the data in the server, included the informations in the first sector. After that it can decide to retrieve again the root and do other searches or close the connection.
+\item\textbf{c}
+This command closes the connection with the server and exits from the program.
+\item\textbf{r int1 int2}
+This command retrieves the root in case is not already on the server and prints all the records that have the key between int1 and int2.
+If no record is found nothing is print.
+\item\textbf{p int}
+This command prints in the terminal the record with key int1
+If no record is found nothing is print.
+\item\textbf{i int1 ... intN}
+This command inserts a new record in the tree. N must be equal to the number of fields.
+\item\textbf{a filename indexKey}
+This commands add to the tree all the rows contained in filename and takes the key stored in the position indexKey.
+\end{itemize}

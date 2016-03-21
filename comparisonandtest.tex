@@ -1,0 +1,71 @@
+\section{Testing}
+We have tested the database with simple files.
+The files, that can also be found in \cite{source}, are some dataset large at most 3 Megabytes, so not very large.\\
+The testing is done over a Lenovo Thinkpad Edge e330 with an Intel core i5-3210M processor, 4 GB of ram at 1600 MHz, 500 GB hard drive at 7200 rpm.
+
+\subsection{16 records}
+Starting from the first we have a dataset of 16 records:
+With this file we have discovered that the number of sectors used in the hard drive are 17 (18 included the first) that multiplied by 512 bytes (that is the size of the sectors) means 9216 Byte of space used (the dataset was of 388 Byte).
+The time used for creating the tree is 0.002201 seconds.
+For sending the tree to the server we have used  0.002201 seconds, that divided by the number of sectors produce an average time of 0.000122 seconds for send a sector to the server.
+For this dataset we have 10 queries done on the 4th index. 
+For execute 10 queries it took 0.001500 seconds, that means an average time to process a query of 0.000203 seconds.
+for resending the tree it took almost the same time as the beginning.
+
+
+\subsection{128 records}
+The second dataset was composed of 128 records:
+With this file we have discovered that the number of sectors used in the hard drive are 138 (139 included the first) that multiplied by 512 bytes (that is the size of the sectors) means 69.5 KB of space used (the dataset was of 3,1 KB).
+The time used for creating the tree is 0.003407 seconds.
+For sending the tree to the server we have used 0.016754 seconds, that divided by the number of sectors produce an average time of 0.000120 seconds for send a sector to the server.
+For this dataset we have 10 and 100 queries done on the 4th index. 
+For execute 10 queries it took 0.008819 seconds, that means an average time to process a query of 0.000980 seconds.
+For resending the tree it took 0.008444 seconds, much less than the beginning.
+For execute 100 queries it took 0.015957 seconds, that means an average time to process a query of 0.000159 seconds.
+For resending the tree it took almost the same time as 10 queries.
+
+
+\subsection{1024 records}
+The third dataset was composed of 1024 records:
+With this file we have discovered that the number of sectors used in the hard drive are 1100 (1101 included the first) that multiplied by 512 bytes (that is the size of the sectors) means 550.5 KB of space used (the dataset was of 24 KB).
+The time used for creating the tree is 0.028614 seconds.
+For sending the tree to the server we have used 0.153054 seconds, that divided by the number of sectors produce an average time of 0.013901 seconds for send a sector to the server, with a ram occupation of the client of about 20000 KB.
+For this dataset we have 10, 100 and 1000 queries done on the 4th index. 
+For execute 10 queries it took 0.060697 seconds, that means an average time to process a query of 0.006070 seconds.
+For resending the tree it took 0.063086 seconds, much less than the beginning.
+For execute 100 queries it took 0.114238 seconds, that means an average time to process a query of 0.000114 seconds.
+For resending the tree it took 0.072463 seconds, a bit more than 10 queries.
+For execute 1000 queries it took 0.350275 seconds, that means an average time to process a query of 0.000350 seconds.
+For resending the tree it took almost the same time as 100 queries.
+
+\subsection{16384 records}
+The fourth dataset was composed of 16384 records:
+With this file we have discovered that the number of sectors used in the hard drive are 15596 (15597 included the first) that multiplied by 512 bytes (that is the size of the sectors) means 7.6 MB of space used (the dataset was of 385 KB).
+The size is less than the dataset because it has duplicate keys.
+The time used for creating the tree is 0.310053 seconds.
+For sending the tree to the server we have used 7.00402 seconds, that divided by the number of sectors produce an average time of 0.00045 seconds for send a sector to the server.
+For this dataset we have 10, 100, 1000 and 10000 queries done on the 4th index. 
+For execute 10 queries it took 0.813481 seconds, that means an average time to process a query of 0.08135 seconds.
+For resending the tree it took 1.80588 seconds, much less than the beginning.
+
+
+
+Our last dataset is composed of 131072 records:
+
+\chapter{Conclusions}
+The conclusions that can be drawn from our testing are:
+as the database becomes larger, the corresponding amount of space required on disk increases , because we have an additional size due to the dimension of the sectors. Also, the query time is very slow over large data if we execute few queries, but if we execute more queries it speeds up due to cache system.
+The reason for that results ..
+This last phenomenon has although the problem that for closing the connection slow down because of the larger number of nodes cached, that must be resent to the server. % The problem with the "specify what" is that closing the connection is an operation that slows things down, since the number of nodes cached is high.
+Concluding, we can assert that with some optimisations this program can be a practical solution, for example for filesystems, because we can use it for storing files in an encrypted way. However, as of today the program is slow and it requires too much space in order to be used in everyday's life.
+
+
+\chapter{Ringraziamenti}
+Desidero ringraziare il prof. Ozalp Babaoglu, il prof Erkay Savas e tutti quelli che mi hanno aiutato durante la stesura della tesi.
+
+
+%\section{Comparison with other algorithms}
+
+
+%\section{Future work}
+%This project can be enlarged to non unique keys, this means adding duplicates to the leafs, that can be added as a queue of records.

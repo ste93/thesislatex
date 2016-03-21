@@ -1,0 +1,3 @@
+
+\paragraph{Deletion}
+For the deletion we start searching the key that must be deleted and if it is found then all the records related with that key are deleted. After that if necessary the tree is ...
